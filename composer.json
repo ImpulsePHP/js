@@ -1,0 +1,14 @@
+{
+  "name": "impulsephp/js",
+  "description": "JS engine for ImpulsePHP components",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Guillaume Bouyer",
+      "email": "impulsephp@icloud.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
