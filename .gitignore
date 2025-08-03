@@ -1,6 +1,5 @@
 /.idea/
 /node_modules/
-/dist/
 /vendor/
 composer.lock
 package-lock.json
