@@ -9,6 +9,6 @@
       "email": "impulsephp@icloud.com"
     }
   ],
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "prefer-stable": true
 }
