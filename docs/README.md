@@ -1,15 +1,15 @@
-# Impulses Documentation
+# Documentation Impulses
 
-This folder contains detailed guides on every feature available in the library.
-Use the table of contents below to navigate through the documentation.
+Ce dossier regroupe les guides détaillés du moteur JavaScript d’ImpulsePHP. Chaque page explique une fonctionnalité, la manière de l’activer et les cas d’usage les plus courants.
 
-## Table of Contents
+## Sommaire
 
 - [Router](router.md)
-- [Events](events.md)
-- [Local Storage Sync](localStorage.md)
-- [Interactions Without JavaScript](interactions.md)
-- [Translation Provider](translation.md)
+- [Événements](events.md)
+- [Synchronisation du localStorage](localStorage.md)
+- [Interactions sans JavaScript](interactions.md)
+- [Gestion des chemins traduits](translation.md)
+- [Recherche instantanée](livesearch.md)
+- [Compteur de caractères](charactercounter.md)
 
-Each page explains how to enable a feature, the API offered and typical use
-cases.
+Ces guides complètent le `README.md` principal du package et servent de référence pour intégrer Impulses dans une application ImpulsePHP.

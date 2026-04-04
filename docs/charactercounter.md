@@ -1,8 +1,8 @@
-## Character Counter
+# Compteur de caractères
 
-La fonctionnalité **Character Counter** permet d'ajouter automatiquement un compteur de caractères en temps réel à vos champs de saisie (textarea, input text, etc.). Elle gère deux modes d'affichage : comptage progressif et décompte.
+La fonctionnalité de compteur de caractères permet d’ajouter automatiquement un suivi en temps réel sur vos champs de saisie (`textarea`, `input text`, etc.). Elle gère deux modes d’affichage : le comptage progressif et le décompte.
 
-### 🚀 Fonctionnalités
+## Fonctionnalités
 - ✅ **Comptage en temps réel** - Mise à jour instantanée lors de la saisie
 - ✅ **Deux modes d'affichage** - Comptage (`count`) ou décompte (`countdown`)
 - ✅ **Indicateurs visuels** - Changement de couleur selon le seuil atteint
@@ -10,7 +10,7 @@ La fonctionnalité **Character Counter** permet d'ajouter automatiquement un com
 - ✅ **Auto-découverte** - Fonctionne automatiquement avec les nouveaux éléments DOM
 - ✅ **Flexible** - Compatible avec textarea, input et autres champs
 
-### 📝 Utilisation de base
+## Utilisation de base
 
 #### 1. Côté PHP - Configuration du composant
 
@@ -49,7 +49,7 @@ class UITextareaComponent extends AbstractComponent
 }
 ```
 
-### ⚙️ Configuration
+## Configuration
 
 #### Attributs requis
 
@@ -58,7 +58,7 @@ class UITextareaComponent extends AbstractComponent
 | `data-character-counter` | Configuration JSON du compteur    |
 | `data-character-display` | Élément qui affichera le compteur |
 
-### 📚 Exemples d'utilisation
+## Exemples d'utilisation
 
 #### Exemple 1 : Comptage simple
 
@@ -133,7 +133,7 @@ public function template(): string
 }
 ```
 
-### 🎨 Indicateurs visuels
+## Indicateurs visuels
 
 Le système applique automatiquement des classes CSS selon le niveau de remplissage :
 - **`text-slate-500`** - État normal (< 90% de la limite)
@@ -149,7 +149,7 @@ Le système applique automatiquement des classes CSS selon le niveau de rempliss
 [data-character-display].text-red-600 { color: #dc2626; }
 ```
 
-### 🔍 Débogage
+## Débogage
 
 #### Messages de console
 
@@ -179,7 +179,7 @@ Le système applique automatiquement des classes CSS selon le niveau de rempliss
 </div>
 ```
 
-### 💡 Bonnes pratiques
+## Bonnes pratiques
 1. **Cohérence** : Utilisez le même mode (`count` ou `countdown`) dans toute votre application
 2. **Accessibilité** : Ajoutez `aria-live="polite"` sur l'élément de comptage pour les lecteurs d'écran
 3. **Performance** : Le système utilise déjà le debouncing pour les événements paste/cut

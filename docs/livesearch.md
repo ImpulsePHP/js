@@ -1,8 +1,10 @@
-# Documentation LiveSearch - ImpulseJS
-## 🎯 **Vue d'ensemble**
-LiveSearch est un module de recherche en temps réel intégré à ImpulseJS qui permet aux développeurs PHP d'ajouter une fonctionnalité de recherche instantanée dans n'importe quelle liste UI **sans écrire une seule ligne de JavaScript**.
-Le système s'initialise automatiquement via les attributs `data-*` et fonctionne avec tous types de contenus : select, listes, tableaux, cartes, etc.
-## ⚡ **Fonctionnalités**
+# Recherche instantanée
+
+LiveSearch est un module de recherche en temps réel intégré à Impulses. Il permet d’ajouter une recherche instantanée dans une liste, un tableau, un sélecteur ou une grille sans écrire de JavaScript applicatif.
+
+Le système s’initialise automatiquement via les attributs `data-*` et fonctionne avec différents types de contenus : listes, tableaux, cartes, menus ou sélecteurs personnalisés.
+
+## Fonctionnalités
 - ✅ **Auto-initialisation** - Aucun JavaScript requis
 - ✅ **Recherche instantanée** - Résultats en temps réel
 - ✅ **Multi-modes** - Contains, startsWith, fuzzy, par mots
@@ -11,13 +13,13 @@ Le système s'initialise automatiquement via les attributs `data-*` et fonctionn
 - ✅ **Accessible** - Support clavier (Escape pour vider)
 - ✅ **Performant** - Optimisé pour de grandes listes
 
-## 🚀 **Installation**
+## Installation
 LiveSearch est automatiquement inclus dans ImpulseJS. Il suffit d'importer le bundle :
 ``` html
 <script src="/path/to/impulse.js"></script>
 ```
-## 📋 **Configuration de base**
-### **Structure HTML minimale**
+## Configuration de base
+### Structure HTML minimale
 ``` html
 <div data-live-search>
     <!-- Input de recherche -->
@@ -31,15 +33,15 @@ LiveSearch est automatiquement inclus dans ImpulseJS. Il suffit d'importer le bu
     </ul>
 </div>
 ```
-### **Attributs obligatoires**
+### Attributs obligatoires
 
 | Attribut | Élément | Description |
 | --- | --- | --- |
 | `data-live-search` | Conteneur principal | Active le système de recherche |
 | `data-search-input` | Input | Champ de saisie de recherche |
 | `data-search-text` | Éléments à filtrer | Texte utilisé pour la recherche |
-## ⚙️ **Configuration avancée**
-### **Attributs de configuration**
+## Configuration avancée
+### Attributs de configuration
 
 | Attribut | Valeur par défaut | Description |
 | --- | --- | --- |
@@ -53,8 +55,8 @@ LiveSearch est automatiquement inclus dans ImpulseJS. Il suffit d'importer le bu
 | `data-search-min-length` | `"0"` | Nombre minimum de caractères |
 | `data-search-hidden-class` | `"hidden"` | Classe CSS pour cacher les éléments |
 | `data-search-no-results-message` | `"Aucun résultat trouvé"` | Message si aucun résultat |
-## 💡 **Exemples d'utilisation**
-### **1. Select personnalisé avec recherche**
+## Exemples d'utilisation
+### 1. Select personnalisé avec recherche
 ``` php
 <?php
 // Dans votre composant PHP
@@ -92,7 +94,7 @@ private function renderDropdown(): string
 }
 ?>
 ```
-### **2. Liste de produits avec recherche fuzzy**
+### 2. Liste de produits avec recherche fuzzy
 ``` html
 <div class="products-container" 
      data-live-search
@@ -129,7 +131,7 @@ private function renderDropdown(): string
     </div>
 </div>
 ```
-### **3. Tableau avec recherche par colonnes**
+### 3. Tableau avec recherche par colonnes
 ``` html
 <div class="table-container" 
      data-live-search
@@ -170,7 +172,7 @@ private function renderDropdown(): string
     </table>
 </div>
 ```
-### **4. Menu de navigation avec recherche**
+### 4. Menu de navigation avec recherche
 ``` html
 <nav class="sidebar" 
      data-live-search
@@ -202,7 +204,7 @@ private function renderDropdown(): string
     </ul>
 </nav>
 ```
-### **5. Composant Impulse avec recherche**
+### 5. Composant Impulse avec recherche
 ``` php
 <?php
 // UISelectComponent.php avec LiveSearch intégré
@@ -273,33 +275,33 @@ private function renderOptions(): string
 }
 ?>
 ```
-## 🔧 **Modes de recherche**
-### **Contains (par défaut)**
+## Modes de recherche
+### Contains (par défaut)
 ``` html
 <div data-live-search data-search-mode="contains">
     <!-- Recherche : "app" trouve "Apple", "Application", "Happy" -->
 </div>
 ```
-### **StartsWith**
+### StartsWith
 ``` html
 <div data-live-search data-search-mode="startsWith">
     <!-- Recherche : "app" trouve "Apple", "Application" mais pas "Happy" -->
 </div>
 ```
-### **Fuzzy**
+### Fuzzy
 ``` html
 <div data-live-search data-search-mode="fuzzy">
     <!-- Recherche : "apl" trouve "Apple" (lettres dans l'ordre) -->
 </div>
 ```
-### **Recherche par mots**
+### Recherche par mots
 ``` html
 <div data-live-search data-search-word-match="true">
     <!-- Recherche : "jean paris" trouve "Jean Dupont - Paris" -->
 </div>
 ```
-## 🎨 **Personnalisation CSS**
-### **Classes par défaut**
+## Personnalisation CSS
+### Classes par défaut
 ``` css
 /* Élément caché */
 .hidden {
@@ -314,7 +316,7 @@ private function renderOptions(): string
     font-size: 14px;
 }
 ```
-### **Personnalisation avec classe custom**
+### Personnalisation avec classe custom
 ``` html
 <div data-live-search data-search-hidden-class="fade-out">
     <!-- Utilise la classe 'fade-out' au lieu de 'hidden' -->
@@ -329,7 +331,7 @@ private function renderOptions(): string
     pointer-events: none;
 }
 ```
-## 📱 **Support multi-champs**
+## Support multi-champs
 ``` html
 <div data-live-search data-search-fields="data-title,data-description,data-tags,.subtitle">
     <input data-search-input>
@@ -349,7 +351,7 @@ La recherche se fera sur :
 3. `data-tags` → "apple,phone,mobile"
 4. `.subtitle` → "Le nouveau flagship d'Apple"
 
-## 🎭 **Événements JavaScript (optionnel)**
+## Événements JavaScript (optionnel)
 Si vous voulez réagir aux événements de recherche :
 ``` javascript
 document.addEventListener('live-search', (event) => {
@@ -363,25 +365,25 @@ document.addEventListener('live-search', (event) => {
         `${visibleItems.length} résultat(s)`;
 });
 ```
-## 🚨 **Gestion d'erreurs**
-### **Éléments manquants**
+## Gestion d'erreurs
+### Éléments manquants
 Si `data-search-input` n'est pas trouvé, un warning s'affiche dans la console :
 ``` 
 LiveSearch: data-search-input not found in container
 ```
-### **Sélecteurs invalides**
+### Sélecteurs invalides
 Le système utilise des sélecteurs par défaut si les attributs sont manquants :
 - `data-search-items` → `"li, [data-searchable], .searchable-item"`
 - `data-search-fields` → `"textContent,data-search-text,data-label"`
 
-## ⚡ **Performance**
-### **Optimisations intégrées**
+## Performance
+### Optimisations intégrées
 - ✅ **Extraction unique** du texte de recherche au démarrage
 - ✅ **Pas de regex** complexes, utilisation de `includes()`
 - ✅ **Réduction du DOM** manipulation via `display` ou classes CSS
 - ✅ **Debouncing** automatique sur les événements input
 
-### **Conseils pour de grandes listes (1000+ éléments)**
+### Conseils pour de grandes listes (1000+ éléments)
 ``` html
 <!-- Utilisez un délai minimum pour éviter les recherches trop fréquentes -->
 <div data-live-search 
@@ -390,7 +392,7 @@ Le système utilise des sélecteurs par défaut si les attributs sont manquants 
     <!-- Le mode startsWith est plus rapide que contains -->
 </div>
 ```
-## 🔄 **Intégration avec les composants Impulse**
+## Intégration avec les composants Impulse
 LiveSearch se met automatiquement à jour lors des mises à jour de composants Impulse. Aucune action requise.
 ``` php
 <?php
@@ -398,34 +400,34 @@ LiveSearch se met automatiquement à jour lors des mises à jour de composants I
 $this->emit('component-updated');
 ?>
 ```
-## 🆘 **Dépannage**
-### **La recherche ne fonctionne pas**
+## Dépannage
+### La recherche ne fonctionne pas
 1. ✅ Vérifiez que `data-live-search` est sur le conteneur principal
 2. ✅ Vérifiez que `data-search-input` est sur l'input
 3. ✅ Vérifiez que les éléments ont `data-search-text` ou du contenu textuel
 
-### **Certains éléments ne sont pas trouvés**
+### Certains éléments ne sont pas trouvés
 1. ✅ Vérifiez le sélecteur `data-search-items`
 2. ✅ Vérifiez les champs `data-search-fields`
 3. ✅ Testez avec `data-search-mode="contains"` (par défaut)
 
-### **Le message "aucun résultat" ne s'affiche pas**
+### Le message "aucun résultat" ne s'affiche pas
 1. ✅ L'élément sera créé automatiquement
 2. ✅ Personnalisez avec `data-search-no-results-message`
 
-## 🏆 **Bonnes pratiques**
-### **✅ DO**
+## Bonnes pratiques
+### À faire
 - Utilisez `data-search-text` pour un contrôle précis du texte de recherche
 - Définissez `data-search-min-length="2"` pour de grandes listes
 - Utilisez `data-search-mode="startsWith"` pour des performances optimales
 - Testez avec différents modes selon vos besoins
 
-### **❌ DON'T**
+### À éviter
 - N'oubliez pas `data-live-search` sur le conteneur principal
 - Ne mélangez pas plusieurs modes de recherche sur le même conteneur
 - N'utilisez pas de sélecteurs CSS complexes dans `data-search-items`
 
-## 📝 **Résumé**
+## Résumé
 LiveSearch permet d'ajouter une recherche temps réel puissante avec une configuration 100% HTML via les attributs `data-*`. Le développeur PHP n'a besoin d'écrire aucun JavaScript, le système s'initialise automatiquement et s'intègre parfaitement avec l'écosystème Impulse.
 **Attributs minimaux requis :**
 - `data-live-search` (conteneur)

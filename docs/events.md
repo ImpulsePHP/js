@@ -1,34 +1,38 @@
-# Events
+# Événements
 
-Impulses exposes a lightweight event system through `window.Impulse`. You can
-subscribe to custom events dispatched by your PHP components and emit your own
-from the client.
+Impulses expose un système d’événements léger via `window.Impulse`. Vous pouvez vous abonner à des événements émis par vos composants ou en déclencher depuis le navigateur.
 
-## Listening to events
+## Écouter un événement
 
 ```javascript
-window.Impulse.on('user:logged-in', payload => {
-  console.log('User logged in:', payload);
+window.Impulse.on('user:logged-in', (payload) => {
+  console.log('Utilisateur connecté :', payload);
 });
 ```
 
-To remove a listener call `off` with the same callback:
+## Retirer un écouteur
+
+Pour retirer un écouteur, utilisez `off()` avec la même fonction de rappel :
 
 ```javascript
-const handler = data => console.log(data);
+const handler = (data) => console.log(data);
+
 window.Impulse.on('cart:updated', handler);
 window.Impulse.off('cart:updated', handler);
 ```
 
-## Emitting events
+## Émettre un événement
 
-Use `Impulse.emit(event, payload)` to dispatch an event both on the client and to
-the server:
+Utilisez `Impulse.emit(event, payload)` pour déclencher un événement côté client et, selon le contexte, le transmettre aussi au composant côté serveur.
 
 ```javascript
 window.Impulse.emit('profile:update', { name: 'John' });
 ```
 
-When used with server-side components the payload is sent to the corresponding
-PHP handler. The built-in router also emits `impulse:page-loaded` and
-`impulse:page-navigated` as described in [Router](router.md).
+## Cas d’usage typiques
+
+- synchroniser plusieurs composants d’une même page ;
+- réagir à une mise à jour de panier, de profil ou de filtre ;
+- déclencher un rafraîchissement partiel côté interface.
+
+Le routeur intégré émet également des événements comme `impulse:page-loaded` et `impulse:page-navigated`, décrits dans [router.md](router.md).

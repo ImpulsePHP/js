@@ -1,7 +1,7 @@
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
 
-const basePlugins = [typescript({ tsconfig: './tsconfig.json' }), terser()];
+const createPlugins = () => [typescript({ tsconfig: './tsconfig.json' }), terser()];
 
 export default [
   {
@@ -13,7 +13,7 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true,
     },
-    plugins: basePlugins,
+    plugins: createPlugins(),
   },
   {
     input: 'src/devtools/impulse.devtools.ts',
@@ -24,6 +24,6 @@ export default [
       sourcemap: true,
       inlineDynamicImports: true,
     },
-    plugins: basePlugins,
+    plugins: createPlugins(),
   },
 ];
