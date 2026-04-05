@@ -21,6 +21,68 @@ function queryOne(selector: string): HTMLElement | null {
 }
 
 export function setupInteractions() {
+  // initialize portal elements moved to body to avoid clipping inside overflow containers
+  function positionPortal(el: HTMLElement) {
+    const anchorSel = el.getAttribute('data-portal-anchor');
+    const align = el.getAttribute('data-portal-align') || 'bottom-left';
+    const minWidth = el.getAttribute('data-portal-min-width');
+    const anchor = anchorSel ? queryOne(anchorSel) as HTMLElement | null : null;
+    if (!anchor) return;
+
+    const aRect = anchor.getBoundingClientRect();
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+
+    let left = aRect.left + scrollX;
+    let top = aRect.bottom + scrollY;
+
+    if (align === 'top-left') {
+      top = aRect.top + scrollY - el.offsetHeight;
+      left = aRect.left + scrollX;
+    } else if (align === 'top-right') {
+      top = aRect.top + scrollY - el.offsetHeight;
+      left = aRect.right + scrollX - el.offsetWidth;
+    } else if (align === 'bottom-right') {
+      top = aRect.bottom + scrollY;
+      left = aRect.right + scrollX - el.offsetWidth;
+    } else if (align === 'left') {
+      top = aRect.top + scrollY;
+      left = aRect.left + scrollX - el.offsetWidth;
+    } else if (align === 'right') {
+      top = aRect.top + scrollY;
+      left = aRect.right + scrollX;
+    }
+
+    el.style.position = 'absolute';
+    el.style.left = `${Math.max(0, Math.round(left))}px`;
+    el.style.top = `${Math.max(0, Math.round(top))}px`;
+    if (minWidth === 'anchor') {
+      el.style.minWidth = `${Math.round(aRect.width)}px`;
+    }
+  }
+
+  function repositionAll() {
+    document.querySelectorAll<HTMLElement>('[data-portal-target="body"]').forEach(el => {
+      if (el.style.display !== 'none') {
+        positionPortal(el);
+      }
+    });
+  }
+
+  function initPortals() {
+    document.querySelectorAll<HTMLElement>('[data-portal-target="body"]').forEach(el => {
+      if (!el.dataset.portalMoved) {
+        // move to body to avoid clipping inside overflow containers
+        document.body.appendChild(el);
+        el.dataset.portalMoved = '1';
+        el.style.position = 'absolute';
+      }
+    });
+    window.addEventListener('resize', repositionAll);
+    window.addEventListener('scroll', repositionAll, true);
+    // initial positioning
+    setTimeout(repositionAll, 50);
+  }
   const clickHandler = (event: Event) => {
     const target = event.target as HTMLElement;
     const el = target.closest<HTMLElement>(
@@ -47,6 +109,11 @@ export function setupInteractions() {
       queryAll(selector).forEach(t => {
         const element = t as HTMLElement;
         element.style.display = element.style.display === 'none' ? 'block' : 'none';
+        // if element uses portal, ensure it's positioned
+        if (element.getAttribute('data-portal-target') === 'body') {
+          initPortals();
+          positionPortal(element);
+        }
       });
     }
 
@@ -54,6 +121,11 @@ export function setupInteractions() {
       const selector = el.dataset.show;
       queryAll(selector).forEach(t => {
         (t as HTMLElement).style.display = 'block';
+        const element = t as HTMLElement;
+        if (element.getAttribute('data-portal-target') === 'body') {
+          initPortals();
+          positionPortal(element);
+        }
       });
     }
 
@@ -182,6 +254,50 @@ export function setupInteractions() {
 
   document.addEventListener('click', clickHandler);
   document.addEventListener('click', clickOutsideHandler);
+
+  // handle data-print attribute -> window.print()
+  document.addEventListener('click', (ev) => {
+    const t = ev.target as HTMLElement;
+    const el = t.closest('[data-print]') as HTMLElement | null;
+    if (!el) return;
+    window.print();
+  });
+
+  // handle input actions like data-action-input="method(this.value)"
+  document.addEventListener('input', (ev) => {
+    const t = ev.target as HTMLElement;
+    const el = t.closest<HTMLElement>('[data-action-input]');
+    if (!el) return;
+    const expr = el.getAttribute('data-action-input');
+    if (!expr) return;
+
+    const match = expr.match(/^(\w+)(?:\((.*)\))?$/);
+    if (!match) return;
+    const [, methodName, params] = match;
+    let paramValue: any = undefined;
+    if (params) {
+      // support 'this.value' placeholder
+      if (params.includes('this.value')) {
+        // @ts-ignore
+        paramValue = (t as any).value;
+      } else {
+        paramValue = params.replace(/['"]/g, '');
+      }
+    }
+
+    const parentComponent = el.closest('[data-impulse-id]');
+    if (!parentComponent) return;
+    const componentId = parentComponent.getAttribute('data-impulse-id');
+    if (!componentId) return;
+    // @ts-ignore
+    if (window.Impulse?.updateComponent) {
+      // @ts-ignore
+      window.Impulse.updateComponent(componentId, methodName, paramValue);
+    }
+  });
+
+  // initialize portal elements on setup
+  initPortals();
 
   document.querySelectorAll<HTMLElement>('[data-if], [data-unless]').forEach(el => {
     const ifAttr = el.getAttribute('data-if');
