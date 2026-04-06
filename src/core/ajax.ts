@@ -274,68 +274,100 @@ async function applyUpdate(componentId: string, html: string, focusInfo?: any)
   const scrollPositions = saveScrollPositions(document.body);
 
   const wrapper = document.createElement("div");
-  wrapper.innerHTML = html;
 
-  const newComponent = wrapper.querySelector("[data-impulse-id]");
-
+  // If the server returned a JSON payload (stringified) containing a `result`
+  // property we should unwrap it here so the rest of the function deals with
+  // the actual HTML fragment. Also support `fragments` handling as before.
+  let parsedStates: any = null;
   try {
     const parsed = JSON.parse(html);
-    if (parsed && typeof parsed === 'object' && parsed.fragments) {
-      Object.entries(parsed.fragments as Record<string, string>).forEach(([key, content]) => {
-        const [group, state] = key.split("@");
-        const selector = `[data-update^="${group}@"]`;
-        const targets = document.querySelectorAll(selector);
+    if (parsed && typeof parsed === 'object') {
+      // fragments are handled as before
+      if (parsed.fragments) {
+        Object.entries(parsed.fragments as Record<string, string>).forEach(([key, content]) => {
+          const [group, state] = key.split("@");
+          const selector = `[data-update^="${group}@"]`;
+          const targets = document.querySelectorAll(selector);
 
-        targets.forEach(el => {
-          const attr = el.getAttribute("data-update");
-          if (!attr) return;
-          const stateKey = attr.split("@")[1];
-          if (!stateKey) return;
-          if (stateKey === state) {
-            const wrapper = document.createElement("div");
-            wrapper.innerHTML = content.trim();
-            const newNode = wrapper.firstElementChild;
-            if (newNode) {
-              el.replaceWith(newNode);
-            } else {
-              el.innerHTML = content;
+          targets.forEach(el => {
+            const attr = el.getAttribute("data-update");
+            if (!attr) return;
+            const stateKey = attr.split("@")[1];
+            if (!stateKey) return;
+            if (stateKey === state) {
+              const wrapper = document.createElement("div");
+              wrapper.innerHTML = content.trim();
+              const newNode = wrapper.firstElementChild;
+              if (newNode) {
+                el.replaceWith(newNode);
+              } else {
+                el.innerHTML = content;
+              }
             }
-          }
+          });
         });
-      });
 
-      if (parsed.styles) {
-        injectStyles(parsed.styles);
-      }
+        if (parsed.styles) {
+          injectStyles(parsed.styles);
+        }
 
-      if (parsed.events) {
-        parsed.events.forEach(([eventName, payload]: [string, string]) => {
-          if (window.Impulse && window.Impulse.emit) {
-            window.Impulse.emit(eventName, payload);
+        if (parsed.events) {
+          parsed.events.forEach(([eventName, payload]: [string, string]) => {
+            if (window.Impulse && window.Impulse.emit) {
+              window.Impulse.emit(eventName, payload);
+            }
+          });
+        }
+
+        if (parsed.states) {
+          const currentComponent = document.querySelector(`[data-impulse-id="${componentId}"]`);
+          if (currentComponent) {
+            currentComponent.setAttribute('data-states', JSON.stringify(parsed.states));
           }
-        });
-      }
-
-      if (parsed.states) {
-        const currentComponent = document.querySelector(`[data-impulse-id="${componentId}"]`);
-        if (currentComponent) {
-          currentComponent.setAttribute('data-states', JSON.stringify(parsed.states));
         }
-      }
 
-      if (parsed.localStorage && typeof parsed.localStorage === 'object') {
-        for (const [key, value] of Object.entries(parsed.localStorage)) {
-          setLocalStorageItem(key, value);
+        if (parsed.localStorage && typeof parsed.localStorage === 'object') {
+          for (const [key, value] of Object.entries(parsed.localStorage)) {
+            setLocalStorageItem(key, value);
+          }
         }
+
+        initImpulse();
+        return;
       }
 
-      initImpulse();
+      // unwrap `result` if present so the rest of the function works with
+      // the raw HTML string instead of the JSON wrapper
+      if (parsed.result) {
+        parsedStates = parsed.states ?? null;
+        if (parsed.styles) {
+          injectStyles(parsed.styles);
+        }
 
-      return;
+        if (parsed.events) {
+          parsed.events.forEach(([eventName, payload]: [string, string]) => {
+            if (window.Impulse && window.Impulse.emit) {
+              window.Impulse.emit(eventName, payload);
+            }
+          });
+        }
+
+        if (parsed.localStorage && typeof parsed.localStorage === 'object') {
+          for (const [key, value] of Object.entries(parsed.localStorage)) {
+            setLocalStorageItem(key, value);
+          }
+        }
+
+        html = parsed.result;
+      }
     }
   } catch (e) {
     // not JSON, continue normally
   }
+
+  wrapper.innerHTML = html;
+
+  const newComponent = wrapper.querySelector("[data-impulse-id]");
 
   restoreScrollPositions(document.body, scrollPositions);
 
