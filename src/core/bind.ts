@@ -34,6 +34,10 @@ function runAction(el: Element, action: () => Promise<any> | void, throttleDelay
   // Handle promises if necessary
   if (result && typeof result.then === 'function') {
     result.catch((error: any) => {
+      const errCode = error && (error.code || (error.data && error.data.code)) ? (error.code || error.data.code) : null;
+      // If the error is just an action_not_found, it's expected when the client is
+      // attempting fallback lookups on parent components — do not spam the console.
+      if (errCode === 'action_not_found') return;
       console.error('❌ Action failed:', error);
     });
   }
@@ -96,7 +100,11 @@ function getComponentChainFromElement(el: Element): string[] {
     }
     node = node.parentElement ? node.parentElement.closest('[data-impulse-id]') : null;
   }
-  return chain;
+  // By default the chain was built from the nearest component to the outer ones
+  // (inner -> outer). Reverse it so we try outer components first (parent
+  // components) then the inner one. This avoids an initial failing request on
+  // the child when the action is implemented on the parent component.
+  return chain.reverse();
 }
 
 async function attemptActionOnChain(componentIds: string[], action: string, value?: any, options?: any): Promise<any> {
