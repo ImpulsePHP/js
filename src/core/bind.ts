@@ -1,4 +1,4 @@
-import { updateComponent } from "./ajax";
+import refreshImpulseComponentList, { updateComponent } from "./ajax";
 import { getUniqueSelector } from "../utils/dom";
 import { characterCounter } from "../features/characterCounter";
 
@@ -100,18 +100,45 @@ function getComponentChainFromElement(el: Element): string[] {
     }
     node = node.parentElement ? node.parentElement.closest('[data-impulse-id]') : null;
   }
-  // By default the chain was built from the nearest component to the outer ones
-  // (inner -> outer). Reverse it so we try outer components first (parent
-  // components) then the inner one. This avoids an initial failing request on
-  // the child when the action is implemented on the parent component.
-  return chain.reverse();
+  // Chain is built from the nearest component to outer ones (inner -> outer).
+  // Keep that order and let the attempt logic decide which component to try first
+  // (we prefer the immediate parent then the nearest child).
+  return chain;
 }
 
 async function attemptActionOnChain(componentIds: string[], action: string, value?: any, options?: any): Promise<any> {
   if (!componentIds || componentIds.length === 0) return Promise.reject(new Error('No component id'));
+  // Ensure the known component list is up-to-date and avoid trying IDs
+  // that are not present in the current document/component registry.
+  try {
+    refreshImpulseComponentList();
+  } catch (e) {}
 
-  for (let i = 0; i < componentIds.length; i++) {
-    const id = componentIds[i];
+  // Build preferred order: try immediate parent first (if present), then the
+  // nearest component (the one containing the element), then the rest of the
+  // chain outward. This implements: parent -> child -> ancestors...
+  const preferred: string[] = [];
+  if (componentIds.length >= 2) {
+    preferred.push(componentIds[1]); // immediate parent
+  }
+  if (componentIds.length >= 1) {
+    preferred.push(componentIds[0]); // nearest (child)
+  }
+  if (componentIds.length > 2) {
+    preferred.push(...componentIds.slice(2));
+  }
+
+  // Filter to components that are actually present in the DOM to avoid
+  // calling unknown IDs.
+  const filtered = preferred.filter(id => !!document.querySelector(`[data-impulse-id="${id}"]`));
+  const chainToTry = filtered.length > 0 ? filtered : preferred.filter(Boolean);
+  if ((window as any).__impulseDebug) {
+    console.debug('[impulse] action chain preference:', { preferred, filtered, chainToTry, componentIds, action });
+  }
+
+  for (let i = 0; i < chainToTry.length; i++) {
+    const id = chainToTry[i];
+    if ((window as any).__impulseDebug) console.debug('[impulse] attempting action on component id:', id, 'action:', action);
     try {
       return await updateComponent(id, action, value, options);
     } catch (err: any) {
@@ -119,7 +146,7 @@ async function attemptActionOnChain(componentIds: string[], action: string, valu
       // If error is action/method not found (strict code), try next component in chain
       if (errCode === 'action_not_found') {
         // continue to next
-        if (i === componentIds.length - 1) {
+        if (i === chainToTry.length - 1) {
           // last, rethrow
           throw err;
         }

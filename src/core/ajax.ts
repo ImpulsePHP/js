@@ -205,14 +205,8 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
       }
 
       if (data.error) {
-        // If the server marks the error as an action not found, do not show a global error
-        // because the client may be performing a fallback retry on parent components.
-        const code = data.code || (data.data && data.data.code) || null;
-        if (code !== 'action_not_found') {
-          showImpulseError(data.message);
-        }
-
-        // Reject with an object containing the message and data so callers can inspect it
+        showImpulseError(data.message);
+        // Reject with an object containing the message so callers can inspect it
         return Promise.reject({ message: data.message || 'Unknown error', error: data.error, data });
       }
     } catch (e) {
