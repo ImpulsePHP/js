@@ -460,7 +460,8 @@ export async function updateComponent(componentId: string, action: string, value
       await applyUpdate(componentId, html, focusInfo);
     }
   } catch (err) {
-    console.error("Impulse error:", err);
+    // Rethrow the error so callers can implement retry/fallback logic
+    throw err;
   }
 }
 

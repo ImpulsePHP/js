@@ -39,6 +39,90 @@ function runAction(el: Element, action: () => Promise<any> | void, throttleDelay
   }
 }
 
+function isNativeActionable(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'button' || tag === 'a' || tag === 'form' || tag === 'select' || tag === 'textarea') return true;
+  if (tag === 'input') return true;
+  if ((el as HTMLElement).hasAttribute('role') && (el as HTMLElement).getAttribute('role') === 'button') return true;
+  if ((el as HTMLElement).hasAttribute('tabindex')) return true;
+  return false;
+}
+
+function findActionableDescendant(el: Element): HTMLElement | null {
+  const selector = 'button, a, input[type="button"], input[type="submit"], input[type="image"], [role="button"], [tabindex]';
+  return el.querySelector<HTMLElement>(selector);
+}
+
+function propagateDataActionAttributes(el: Element): void {
+  const attrs = Array.from(el.attributes).filter(a => a.name.startsWith('data-action-'));
+  if (attrs.length === 0) return;
+  if (isNativeActionable(el)) return; // already on an actionable element
+
+  const target = findActionableDescendant(el);
+  // If no native actionable descendant, try to find a child component root
+  let finalTarget = target;
+  if (!finalTarget) {
+    const childComponent = el.querySelector('[data-impulse-id]') as HTMLElement | null;
+    if (childComponent) {
+      finalTarget = childComponent;
+    }
+  }
+  if (!finalTarget) return;
+
+  attrs.forEach(a => {
+    if (!finalTarget!.hasAttribute(a.name)) {
+      finalTarget!.setAttribute(a.name, a.value);
+      // remove from wrapper to avoid double-binding when clicking the inner element
+      try {
+        el.removeAttribute(a.name);
+      } catch (e) {}
+    }
+  });
+}
+
+function propagateAllActionAttributes() {
+  // Find all elements that declare data-action-* and try to propagate to inner actionable element
+  const nodes = document.querySelectorAll('[data-action-click], [data-action-input], [data-action-change], [data-action-blur], [data-action-keydown], [data-action-submit], [data-action-emit]');
+  nodes.forEach((el) => propagateDataActionAttributes(el));
+}
+
+function getComponentChainFromElement(el: Element): string[] {
+  const chain: string[] = [];
+  let node: Element | null = el.closest('[data-impulse-id]');
+  while (node) {
+    const id = node.getAttribute('data-impulse-id');
+    if (id && !chain.includes(id)) {
+      chain.push(id);
+    }
+    node = node.parentElement ? node.parentElement.closest('[data-impulse-id]') : null;
+  }
+  return chain;
+}
+
+async function attemptActionOnChain(componentIds: string[], action: string, value?: any, options?: any): Promise<any> {
+  if (!componentIds || componentIds.length === 0) return Promise.reject(new Error('No component id'));
+
+  for (let i = 0; i < componentIds.length; i++) {
+    const id = componentIds[i];
+    try {
+      return await updateComponent(id, action, value, options);
+    } catch (err: any) {
+      const errMsg = typeof err === 'string' ? err : (err && (err.message || err.error)) ? (err.message || err.error) : '';
+      // If error is action/method not found, try next component in chain
+      if (/non trouv[eé]e|not found|introuvable/i.test(errMsg)) {
+        // continue to next
+        if (i === componentIds.length - 1) {
+          // last, rethrow
+          throw err;
+        }
+        continue;
+      }
+      // other errors -> rethrow immediately
+      throw err;
+    }
+  }
+}
+
 function bindClickEvents() {
   document.querySelectorAll<HTMLElement>("[data-action-click]").forEach((el) => {
     if ((el as any)._impulseBoundClick) return;
@@ -55,9 +139,10 @@ function bindClickEvents() {
       const componentId = parent.getAttribute("data-impulse-id");
       let update = el.getAttribute("data-action-update") || undefined;
 
-      performAction(el, () =>
-        updateComponent(componentId!, method, undefined, { update })
-      );
+      performAction(el, () => {
+        const chain = getComponentChainFromElement(el);
+        return attemptActionOnChain(chain, method!, undefined, { update });
+      });
     });
   });
 }
@@ -80,16 +165,17 @@ function bindInputEvents() {
       const selectionStart = isCurrentInput ? activeElement.selectionStart : null;
       const selectionEnd = isCurrentInput ? activeElement.selectionEnd : null;
 
-      performAction(el, () =>
-        updateComponent(componentId!, method, value, {
+      performAction(el, () => {
+        const chain = getComponentChainFromElement(el);
+        return attemptActionOnChain(chain, method!, value, {
           activeElementId: isCurrentInput && activeElement.id?.trim() !== '' ? activeElement.id : null,
           activeElementSelector: isCurrentInput ? getUniqueSelector(activeElement) : null,
           selectionStart,
           selectionEnd,
           caretPosition: selectionStart,
           update,
-        })
-      );
+        });
+      });
     });
   });
 }
@@ -111,14 +197,15 @@ function bindChangeEvents() {
         ? (el as HTMLSelectElement).selectedIndex
         : -1;
 
-      performAction(el, () =>
-        updateComponent(componentId!, method, value, {
+      performAction(el, () => {
+        const chain = getComponentChainFromElement(el);
+        return attemptActionOnChain(chain, method!, value, {
           activeElementId: el.id,
           activeElementSelector: getUniqueSelector(el),
           selectedIndex: selectedIndex,
           update,
-        })
-      );
+        });
+      });
     });
   });
 }
@@ -136,11 +223,10 @@ function bindBlurEvents() {
       const value = (event.target as HTMLInputElement).value;
       let update = el.getAttribute("data-action-update") || undefined;
 
-      performAction(el, () =>
-        updateComponent(componentId!, method, value, {
-          update,
-        })
-      );
+      performAction(el, () => {
+        const chain = getComponentChainFromElement(el);
+        return attemptActionOnChain(chain, method!, value, { update });
+      });
     });
   });
 }
@@ -158,11 +244,10 @@ function bindKeyDownEvents() {
       let update = el.getAttribute("data-action-update") || undefined;
       const key = event.key;
 
-      performAction(el, () =>
-        updateComponent(componentId!, `${method}('${key}')`, undefined, {
-          update,
-        })
-      );
+      performAction(el, () => {
+        const chain = getComponentChainFromElement(el);
+        return attemptActionOnChain(chain, `${method}('${key}')`, undefined, { update });
+      });
     });
   });
 }
@@ -178,11 +263,10 @@ function bindSubmitEvents() {
       const componentId = form.closest("[data-impulse-id]")?.getAttribute("data-impulse-id");
       if (!method || !componentId) return;
       let update = form.getAttribute("data-action-update") || undefined;
-      performAction(form, () =>
-        updateComponent(componentId, method, undefined, {
-          update,
-        })
-      );
+      performAction(form, () => {
+        const chain = getComponentChainFromElement(form);
+        return attemptActionOnChain(chain, method!, undefined, { update });
+      });
     });
   });
 }
@@ -238,6 +322,10 @@ function bindEmitEvents() {
 }
 
 export function bindImpulseEvents() {
+  // Propagate data-action-* attributes from custom wrapper components to their
+  // inner actionable descendants so attributes work regardless of component
+  // implementation (current and future components).
+  propagateAllActionAttributes();
   bindClickEvents();
   bindInputEvents();
   bindChangeEvents();
