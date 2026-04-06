@@ -215,7 +215,15 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
       }
 
       if (data.error) {
-        showImpulseError(data.message);
+        const code = data.code || (data.data && data.data.code) || null;
+        // Do not show a global UI error for action_not_found because the
+        // client may be performing a fallback retry on parent components.
+        if (code !== 'action_not_found') {
+          showImpulseError(data.message);
+        } else if ((window as any).__impulseDebug) {
+          console.debug('[impulse] suppressed global error for action_not_found', data.message);
+        }
+
         // Reject with an object containing the message so callers can inspect it
         return Promise.reject({ message: data.message || 'Unknown error', error: data.error, data });
       }
@@ -309,7 +317,6 @@ async function applyUpdate(componentId: string, html: string, focusInfo?: any)
   // If the server returned a JSON payload (stringified) containing a `result`
   // property we should unwrap it here so the rest of the function deals with
   // the actual HTML fragment. Also support `fragments` handling as before.
-  let parsedStates: any = null;
   try {
     const parsed = JSON.parse(html);
     if (parsed && typeof parsed === 'object') {
@@ -369,8 +376,7 @@ async function applyUpdate(componentId: string, html: string, focusInfo?: any)
 
       // unwrap `result` if present so the rest of the function works with
       // the raw HTML string instead of the JSON wrapper
-      if (parsed.result) {
-        parsedStates = parsed.states ?? null;
+        if (parsed.result) {
         if (parsed.styles) {
           injectStyles(parsed.styles);
         }
