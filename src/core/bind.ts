@@ -107,9 +107,9 @@ async function attemptActionOnChain(componentIds: string[], action: string, valu
     try {
       return await updateComponent(id, action, value, options);
     } catch (err: any) {
-      const errMsg = typeof err === 'string' ? err : (err && (err.message || err.error)) ? (err.message || err.error) : '';
-      // If error is action/method not found, try next component in chain
-      if (/non trouv[eé]e|not found|introuvable/i.test(errMsg)) {
+      const errCode = err && (err.code || (err.data && err.data.code)) ? (err.code || err.data.code) : null;
+      // If error is action/method not found (strict code), try next component in chain
+      if (errCode === 'action_not_found') {
         // continue to next
         if (i === componentIds.length - 1) {
           // last, rethrow

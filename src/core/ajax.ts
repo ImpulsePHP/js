@@ -206,7 +206,8 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
 
       if (data.error) {
         showImpulseError(data.message);
-        return Promise.reject(data.error);
+        // Reject with an object containing the message so callers can inspect it
+        return Promise.reject({ message: data.message || 'Unknown error', error: data.error, data });
       }
     } catch (e) {
       console.warn("Impulse: failed to parse response or malformed data.", { text, error: e });
