@@ -180,9 +180,19 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
     try {
       const data = JSON.parse(text);
 
+      // Track applied components to avoid applying duplicated fragments
+      const appliedComponents: Set<string> = new Set();
       if (data.updates && Array.isArray(data.updates)) {
         data.updates.forEach((update: {component: string, html: string}) => {
-          applyUpdate(update.component, update.html, focusInfo);
+          try {
+            applyUpdate(update.component, update.html, focusInfo);
+            appliedComponents.add(update.component);
+          } catch (e) {
+            // If an update fails, log in debug but continue with others
+            if ((window as any).__impulseDebug) {
+              console.debug('[impulse] applyUpdate failed for component', update.component, e);
+            }
+          }
         })
       }
 
@@ -208,6 +218,27 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
         showImpulseError(data.message);
         // Reject with an object containing the message so callers can inspect it
         return Promise.reject({ message: data.message || 'Unknown error', error: data.error, data });
+      }
+
+      // If the server returned both a top-level `result` and an `updates` array
+      // that already included the same component(s), avoid returning the result
+      // or attempting to apply it again. This prevents duplicate application
+      // when the server emits redundant payloads.
+      if (typeof data.result === 'string' && appliedComponents.size > 0) {
+        try {
+          // quick check: if the result contains any of the applied ids, skip
+          const resultHtml = data.result as string;
+          for (const id of appliedComponents) {
+            if (resultHtml.includes(`data-impulse-id=\"${id}\"`) || resultHtml.includes(`data-impulse-id='${id}'`) || resultHtml.includes(`data-impulse-id=${id}`)) {
+              if ((window as any).__impulseDebug) {
+                console.debug('[impulse] sendUpdateRequest: skipping duplicated top-level result because updates already applied', { applied: Array.from(appliedComponents), componentId: id });
+              }
+              return null;
+            }
+          }
+        } catch (e) {
+          // ignore parse errors and fallthrough to normal behavior
+        }
       }
     } catch (e) {
       console.warn("Impulse: failed to parse response or malformed data.", { text, error: e });
@@ -367,7 +398,9 @@ async function applyUpdate(componentId: string, html: string, focusInfo?: any)
 
   wrapper.innerHTML = html;
 
-  const newComponent = wrapper.querySelector("[data-impulse-id]");
+  // Prefer an element whose data-impulse-id matches the requested componentId.
+  // Fallback to the first data-impulse-id found in the fragment.
+  const newComponent = wrapper.querySelector(`[data-impulse-id="${componentId}"]`) || wrapper.querySelector("[data-impulse-id]");
 
   restoreScrollPositions(document.body, scrollPositions);
 
@@ -417,6 +450,19 @@ async function applyUpdate(componentId: string, html: string, focusInfo?: any)
 
   const currentComponent = document.querySelector(`[data-impulse-id="${componentId}"]`);
   if (newComponent && currentComponent && currentComponent.parentNode) {
+    // Ensure we are not accidentally replacing the current component with a
+    // fragment that contains a different component (e.g. a child). If the
+    // fragment's first found data-impulse-id does not match the requested
+    // componentId, abort the global replace and let any explicit `updates`
+    // (already applied earlier) handle the targeted changes.
+    const foundId = newComponent.getAttribute('data-impulse-id');
+    if (foundId !== componentId) {
+      if ((window as any).__impulseDebug) {
+        console.debug('[impulse] applyUpdate: fragment contains different data-impulse-id', { componentId, foundId });
+      }
+      // Do not replace the current component with an unrelated fragment.
+      return;
+    }
     const originalClasses = currentComponent.getAttribute('class') || '';
     const newClasses = newComponent.getAttribute('class') || '';
 
