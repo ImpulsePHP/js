@@ -66,7 +66,8 @@ import { collectLocalStorage, exportLocalStorageToBackend } from '../features/lo
         const doc = parser.parseFromString(html, 'text/html');
 
         if (doc.head) {
-          const allowedTags = ['META', 'LINK', 'TITLE', 'SCRIPT'];
+          const currentDynamicStyles = document.head.querySelector('#impulse-dynamic-styles')?.cloneNode(true) as HTMLStyleElement | null;
+          const allowedTags = ['META', 'LINK', 'TITLE', 'SCRIPT', 'STYLE'];
 
           const newHeadElements = Array.from(doc.head.children)
             .filter(child => allowedTags.includes(child.tagName));
@@ -89,6 +90,10 @@ import { collectLocalStorage, exportLocalStorageToBackend } from '../features/lo
           mergedHead.forEach(el => {
             document.head.appendChild(el.cloneNode(true));
           });
+
+          if (!document.head.querySelector('#impulse-dynamic-styles') && currentDynamicStyles) {
+            document.head.appendChild(currentDynamicStyles);
+          }
         }
 
         const newApp = doc.querySelector('#app');
