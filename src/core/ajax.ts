@@ -177,8 +177,29 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
     res.headers.get("content-type")?.includes("application/json") ||
     (text.trim().startsWith("{") && text.trim().endsWith("}"))
   ) {
-    try {
-      const data = JSON.parse(text);
+      try {
+       const data = JSON.parse(text);
+
+       // Attach response headers to the parsed payload so callers can inspect
+       // headers set by the server (e.g. custom tracing headers). Note: header
+       // names are lower-cased by the Fetch Headers API.
+       try {
+         const responseHeaders: Record<string, string> = {};
+         (res.headers || new Headers()).forEach((value: string, key: string) => {
+           responseHeaders[key] = value;
+         });
+         // expose headers for consumers
+         (data as any).headers = responseHeaders;
+       } catch (e) {
+         // ignore header extraction errors
+       }
+
+       // If server asks for a redirect, perform it immediately.
+       if (data && typeof data === 'object' && data.redirect) {
+         // Use location.replace to avoid keeping the current page in history when appropriate.
+         window.location.href = data.redirect;
+         return null;
+       }
 
       // Track applied components to avoid applying duplicated fragments
       const appliedComponents: Set<string> = new Set();
