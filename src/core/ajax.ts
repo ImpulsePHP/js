@@ -150,6 +150,35 @@ function injectStyles(styles: string): void {
   }
 }
 
+function injectScripts(scripts: string): void {
+    if (!scripts) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = scripts;
+
+    const scriptNodes = Array.from(wrapper.querySelectorAll('script'));
+
+    scriptNodes.forEach((scriptNode) => {
+        const src = scriptNode.getAttribute('src');
+
+        if (src) {
+            const existing = document.querySelector(`script[src="${src}"]`);
+            if (existing) {
+                return;
+            }
+        }
+
+        const script = document.createElement('script');
+
+        Array.from(scriptNode.attributes).forEach((attr) => {
+            script.setAttribute(attr.name, attr.value);
+        });
+
+        script.textContent = scriptNode.textContent;
+        document.body.appendChild(script);
+    });
+}
+
 async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string | null>
 {
   const impulseComponents = window.__impulseComponents;
@@ -219,6 +248,10 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
 
       if (data.styles) {
         injectStyles(data.styles);
+      }
+
+      if (data.scripts) {
+          injectScripts(data.scripts);
       }
 
       if (data.events) {
@@ -370,6 +403,10 @@ async function applyUpdate(componentId: string, html: string, focusInfo?: any)
           injectStyles(parsed.styles);
         }
 
+        if (parsed.scripts) {
+          injectScripts(parsed.scripts);
+        }
+
         if (parsed.events) {
           parsed.events.forEach(([eventName, payload]: [string, string]) => {
             if (window.Impulse && window.Impulse.emit) {
@@ -397,9 +434,13 @@ async function applyUpdate(componentId: string, html: string, focusInfo?: any)
 
       // unwrap `result` if present so the rest of the function works with
       // the raw HTML string instead of the JSON wrapper
-        if (parsed.result) {
+      if (parsed.result) {
         if (parsed.styles) {
           injectStyles(parsed.styles);
+        }
+
+        if (parsed.scripts) {
+          injectScripts(parsed.scripts);
         }
 
         if (parsed.events) {
