@@ -35,8 +35,7 @@ function runAction(el: Element, action: () => Promise<any> | void, throttleDelay
   if (result && typeof result.then === 'function') {
     result.catch((error: any) => {
       const errCode = error && (error.code || (error.data && error.data.code)) ? (error.code || error.data.code) : null;
-      // If the error is just an action_not_found, it's expected when the client is
-      // attempting fallback lookups on parent components — do not spam the console.
+      // action_not_found is handled by the caller or by explicit targeting rules.
       if (errCode === 'action_not_found') return;
       console.error('❌ Action failed:', error);
     });
@@ -82,6 +81,8 @@ function propagateDataActionAttributes(el: Element): void {
       } catch (e) {}
     }
   });
+
+  finalTarget.setAttribute('data-action-origin', 'propagated');
 }
 
 function propagateAllActionAttributes() {
@@ -90,70 +91,111 @@ function propagateAllActionAttributes() {
   nodes.forEach((el) => propagateDataActionAttributes(el));
 }
 
+function toKebabCase(value: string): string {
+  return value
+    .replace(/[\s_]+/g, '-')
+    .replace(/(?!^)([A-Z])/g, '-$1')
+    .replace(/--+/g, '-')
+    .toLowerCase();
+}
+
 function getComponentChainFromElement(el: Element): string[] {
   const chain: string[] = [];
   let node: Element | null = el.closest('[data-impulse-id]');
+
   while (node) {
     const id = node.getAttribute('data-impulse-id');
     if (id && !chain.includes(id)) {
       chain.push(id);
     }
+
     node = node.parentElement ? node.parentElement.closest('[data-impulse-id]') : null;
   }
-  // Chain is built from the nearest component to outer ones (inner -> outer).
-  // Keep that order and let the attempt logic decide which component to try first
-  // (we prefer the immediate parent then the nearest child).
+
   return chain;
 }
 
-async function attemptActionOnChain(componentIds: string[], action: string, value?: any, options?: any): Promise<any> {
-  if (!componentIds || componentIds.length === 0) return Promise.reject(new Error('No component id'));
-  // Ensure the known component list is up-to-date and avoid trying IDs
-  // that are not present in the current document/component registry.
+function resolveExplicitComponentId(value: string, chain: string[]): string | null {
+  const raw = value.trim();
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = toKebabCase(raw);
+  const candidates = Array.from(new Set([
+    raw,
+    raw.toLowerCase(),
+    normalized,
+    normalized.endsWith('-component') ? normalized : `${normalized}-component`,
+  ]));
+
+  const matchesCandidate = (id: string) => candidates.some((candidate) =>
+    id === candidate || id.startsWith(`${candidate}_`)
+  );
+
+  for (const id of chain) {
+    if (matchesCandidate(id)) {
+      return id;
+    }
+  }
+
+  const allIds = Array.from(document.querySelectorAll('[data-impulse-id]'))
+    .map((node) => node.getAttribute('data-impulse-id'))
+    .filter((id): id is string => !!id);
+
+  return allIds.find((id) => matchesCandidate(id)) || null;
+}
+
+function resolveActionComponentIds(el: Element): string[] {
+  const chain = getComponentChainFromElement(el);
+  if (chain.length === 0) {
+    return [];
+  }
+
+  const explicitTarget = (el as HTMLElement).getAttribute('data-action-call');
+  if (explicitTarget) {
+    const componentId = resolveExplicitComponentId(explicitTarget, chain);
+    if (!componentId) {
+      throw new Error(`Component target not found for data-action-call="${explicitTarget}"`);
+    }
+
+    return [componentId];
+  }
+
+  if ((el as HTMLElement).getAttribute('data-action-origin') === 'propagated') {
+    return chain;
+  }
+
+  return [chain[0]];
+}
+
+async function callAction(el: Element, action: string, value?: any, options?: any): Promise<any> {
   try {
     refreshImpulseComponentList();
   } catch (e) {}
 
-  // Build preferred order: try immediate parent first (if present), then the
-  // nearest component (the one containing the element), then the rest of the
-  // chain outward. This implements: parent -> child -> ancestors...
-  const preferred: string[] = [];
-  if (componentIds.length >= 2) {
-    preferred.push(componentIds[1]); // immediate parent
-  }
-  if (componentIds.length >= 1) {
-    preferred.push(componentIds[0]); // nearest (child)
-  }
-  if (componentIds.length > 2) {
-    preferred.push(...componentIds.slice(2));
+  const componentIds = resolveActionComponentIds(el);
+  if (componentIds.length === 0) {
+    return Promise.reject(new Error('No component id'));
   }
 
-  // Filter to components that are actually present in the DOM to avoid
-  // calling unknown IDs.
-  const filtered = preferred.filter(id => !!document.querySelector(`[data-impulse-id="${id}"]`));
-  const chainToTry = filtered.length > 0 ? filtered : preferred.filter(Boolean);
   if ((window as any).__impulseDebug) {
-    console.debug('[impulse] action chain preference:', { preferred, filtered, chainToTry, componentIds, action });
+    console.debug('[impulse] calling action on component ids:', componentIds, 'action:', action);
   }
 
-  for (let i = 0; i < chainToTry.length; i++) {
-    const id = chainToTry[i];
-    if ((window as any).__impulseDebug) console.debug('[impulse] attempting action on component id:', id, 'action:', action);
+  for (let index = 0; index < componentIds.length; index += 1) {
+    const componentId = componentIds[index];
+
     try {
-      return await updateComponent(id, action, value, options);
-    } catch (err: any) {
-      const errCode = err && (err.code || (err.data && err.data.code)) ? (err.code || err.data.code) : null;
-      // If error is action/method not found (strict code), try next component in chain
-      if (errCode === 'action_not_found') {
-        // continue to next
-        if (i === chainToTry.length - 1) {
-          // last, rethrow
-          throw err;
-        }
+      return await updateComponent(componentId, action, value, options);
+    } catch (error: any) {
+      const errCode = error && (error.code || (error.data && error.data.code)) ? (error.code || error.data.code) : null;
+
+      if (errCode === 'action_not_found' && index < componentIds.length - 1) {
         continue;
       }
-      // other errors -> rethrow immediately
-      throw err;
+
+      throw error;
     }
   }
 }
@@ -171,12 +213,10 @@ function bindClickEvents() {
       const parent = el.closest("[data-impulse-id]");
       if (!method || !parent) return;
 
-      const componentId = parent.getAttribute("data-impulse-id");
       let update = el.getAttribute("data-action-update") || undefined;
 
       performAction(el, () => {
-        const chain = getComponentChainFromElement(el);
-        return attemptActionOnChain(chain, method!, undefined, { update });
+        return callAction(el, method!, undefined, { update });
       });
     });
   });
@@ -191,7 +231,6 @@ function bindInputEvents() {
       const method = el.getAttribute("data-action-input");
       const parent = el.closest("[data-impulse-id]");
       if (!method || !parent) return;
-      const componentId = parent.getAttribute("data-impulse-id");
       const value = (event.target as HTMLInputElement).value;
 
       let update = el.getAttribute("data-action-update") || undefined;
@@ -201,8 +240,7 @@ function bindInputEvents() {
       const selectionEnd = isCurrentInput ? activeElement.selectionEnd : null;
 
       performAction(el, () => {
-        const chain = getComponentChainFromElement(el);
-        return attemptActionOnChain(chain, method!, value, {
+        return callAction(el, method!, value, {
           activeElementId: isCurrentInput && activeElement.id?.trim() !== '' ? activeElement.id : null,
           activeElementSelector: isCurrentInput ? getUniqueSelector(activeElement) : null,
           selectionStart,
@@ -224,7 +262,6 @@ function bindChangeEvents() {
       const method = el.getAttribute("data-action-change");
       const parent = el.closest("[data-impulse-id]");
       if (!method || !parent) return;
-      const componentId = parent.getAttribute("data-impulse-id");
       const value = (event.target as HTMLSelectElement | HTMLInputElement).value;
       let update = el.getAttribute("data-action-update") || undefined;
 
@@ -233,8 +270,7 @@ function bindChangeEvents() {
         : -1;
 
       performAction(el, () => {
-        const chain = getComponentChainFromElement(el);
-        return attemptActionOnChain(chain, method!, value, {
+        return callAction(el, method!, value, {
           activeElementId: el.id,
           activeElementSelector: getUniqueSelector(el),
           selectedIndex: selectedIndex,
@@ -254,13 +290,11 @@ function bindBlurEvents() {
       const method = el.getAttribute("data-action-blur");
       const parent = el.closest("[data-impulse-id]");
       if (!method || !parent) return;
-      const componentId = parent.getAttribute("data-impulse-id");
       const value = (event.target as HTMLInputElement).value;
       let update = el.getAttribute("data-action-update") || undefined;
 
       performAction(el, () => {
-        const chain = getComponentChainFromElement(el);
-        return attemptActionOnChain(chain, method!, value, { update });
+        return callAction(el, method!, value, { update });
       });
     });
   });
@@ -275,13 +309,11 @@ function bindKeyDownEvents() {
       const method = el.getAttribute("data-action-keydown");
       const parent = el.closest("[data-impulse-id]");
       if (!method || !parent) return;
-      const componentId = parent.getAttribute("data-impulse-id");
       let update = el.getAttribute("data-action-update") || undefined;
       const key = event.key;
 
       performAction(el, () => {
-        const chain = getComponentChainFromElement(el);
-        return attemptActionOnChain(chain, `${method}('${key}')`, undefined, { update });
+        return callAction(el, `${method}('${key}')`, undefined, { update });
       });
     });
   });
@@ -299,8 +331,7 @@ function bindSubmitEvents() {
       if (!method || !componentId) return;
       let update = form.getAttribute("data-action-update") || undefined;
       performAction(form, () => {
-        const chain = getComponentChainFromElement(form);
-        return attemptActionOnChain(chain, method!, undefined, { update });
+        return callAction(form, method!, undefined, { update });
       });
     });
   });

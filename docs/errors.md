@@ -1,6 +1,6 @@
 # Gestion des erreurs et codes
 
-Le moteur JS s'appuie sur des réponses JSON structurées pour différencier les erreurs fatales des cas où une tentative doit être réessayée sur un autre composant.
+Le moteur JS s'appuie sur des réponses JSON structurées pour différencier les erreurs fatales des erreurs métier ou de ciblage.
 
 ## Code important : `action_not_found`
 - Signification : la méthode demandée n'existe pas sur le composant ciblé.
@@ -10,8 +10,9 @@ Le moteur JS s'appuie sur des réponses JSON structurées pour différencier les
 ```
 - Comportement client :
   - Ne pas afficher l'erreur globalement (`showImpulseError`) pour ce code.
-  - Ne pas logguer en console (pour éviter le bruit lié aux tentatives de fallback).
-  - Tenter la même action sur le prochain composant de la chaîne (parent -> child selon la configuration actuelle).
+  - Ne pas logguer en console pour éviter le bruit sur les erreurs déjà gérées.
+  - Si l'action vient d'un wrapper de composant UI propagé, tenter le composant parent suivant.
+  - Sinon, rejeter la promesse pour laisser le code appelant décider quoi faire.
 
 ## Autres erreurs
 - Toute autre réponse avec `error: true` sera affichée via `showImpulseError` et la promesse rejetée.
@@ -19,4 +20,4 @@ Le moteur JS s'appuie sur des réponses JSON structurées pour différencier les
 
 ---
 
-Conseil : durant le développement, regardez l'onglet `Network` pour inspecter les requêtes vers `/impulse.php` et vérifier la présence du champ `code` pour déboguer le comportement de fallback.
+Conseil : durant le développement, regardez l'onglet `Network` pour inspecter les requêtes vers `/impulse.php` et vérifier la présence du champ `code` pour déboguer le ciblage et le fallback d'action.

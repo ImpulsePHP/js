@@ -270,8 +270,8 @@ async function sendUpdateRequest(payload: any, focusInfo?: any): Promise<string 
 
       if (data.error) {
         const code = data.code || (data.data && data.data.code) || null;
-        // Do not show a global UI error for action_not_found because the
-        // client may be performing a fallback retry on parent components.
+        // Do not show a global UI error for action_not_found because it is
+        // usually handled by the calling code or explicit component targeting.
         if (code !== 'action_not_found') {
           showImpulseError(data.message);
         } else if ((window as any).__impulseDebug) {
@@ -607,7 +607,7 @@ export async function updateComponent(componentId: string, action: string, value
       await applyUpdate(componentId, html, focusInfo);
     }
   } catch (err) {
-    // Rethrow the error so callers can implement retry/fallback logic
+    // Rethrow the error so callers can implement their own handling.
     throw err;
   }
 }

@@ -34,13 +34,12 @@ En mode dev (ou quand `DevError::respond` est utilisé), l'API peut renvoyer :
 ```json
 { "error": true, "message": "...", "code": "action_not_found" }
 ```
-- `code` est important : le client s'appuie sur `code === 'action_not_found'` pour décider de tenter la méthode sur un composant parent (fallback). Pour d'autres codes, le client affichera `showImpulseError`.
+- `code` est important : le client s'appuie sur `code === 'action_not_found'` pour identifier une action absente sur le composant ciblé et, dans certains cas, retenter l'appel sur un composant parent. Pour d'autres codes, le client affichera `showImpulseError`.
 
 ## Comportement côté client
 - Les `updates` sont parcourues et chaque fragment est passé à `applyUpdate(component, html, focusInfo)`.
-- Si la réponse contient `error: true`, la promesse est rejetée avec un objet `{ message, error, data }` afin que le caller puisse inspecter `data.code` et décider d'un fallback.
+- Si la réponse contient `error: true`, la promesse est rejetée avec un objet `{ message, error, data }` afin que le caller puisse inspecter `data.code` ou déclencher un fallback contrôlé.
 
 ---
 
 Voir `api.md` pour l'utilisation programmative de `updateComponent` et `emit`.
-

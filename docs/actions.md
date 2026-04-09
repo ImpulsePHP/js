@@ -15,6 +15,41 @@ Chaque attribut peut contenir :
 - un nom de méthode simple : `login`
 - une notation d'appel : `updateName("John")`
 
+### Résolution de l'action
+- Par défaut, une balise HTML standard rendue dans un composant appelle l'action sur le composant le plus proche.
+- Pour un composant UI imbriqué comme `uibutton`, après propagation automatique des attributs, l'action est d'abord appelée sur `UIButtonComponent`, puis sur les composants parents jusqu'à trouver une méthode `#[Action]`.
+- `data-action-call` reste prioritaire et force l'appel sur un composant précis.
+
+Exemple :
+```html
+<uibutton
+  type="button"
+  label="Enregistrer"
+  data-action-click="save"
+/>
+```
+
+Dans cet exemple, l'action `save` sera appelée sur `UIButtonComponent`, puis sur les composants parents si elle n'existe pas sur ce composant UI.
+
+### `data-action-call`
+- Usage : `data-action-call="MyComponent"`.
+- Objectif : forcer l'appel d'une action sur un autre composant précis, au lieu d'utiliser le composant le plus proche.
+- Valeurs recommandées :
+  - nom court de classe : `LoginComponent`
+  - préfixe de composant : `login-component`
+
+Exemple :
+```html
+<uibutton
+  type="button"
+  label="Enregistrer"
+  data-action-click="save"
+  data-action-call="RegisterComponent"
+/>
+```
+
+Dans cet exemple, l'action `save` sera appelée directement sur `RegisterComponent`.
+
 ### `data-action-update`
 - Usage : `data-action-update="group@state"`.
 - Objectif : indiquer au client que la réponse serveur contiendra un fragment ciblé `data-update="group@state"` et qu'il faut seulement remplacer ce fragment.
@@ -37,6 +72,13 @@ Note : la stratégie par défaut est MOVE (l'attribut est retiré du wrapper). S
 ```html
 <button data-action-click="logout">Se déconnecter</button>
 ```
+- Balise HTML standard dans un composant :
+```html
+<p class="text-rose-700" data-action-click="logout">
+  Déconnexion
+</p>
+```
+Le moteur appellera `logout` dans le composant qui rend cette balise.
 - Wrapper avec propagation :
 ```html
 <span data-action-click="login">
