@@ -6,6 +6,13 @@ import { collectLocalStorage, exportLocalStorageToBackend } from '../features/lo
     const startTime = performance.now();
     let responseSize = 0;
     const currentLang = document.documentElement.lang || null;
+    const route = (() => {
+      try {
+        return new URL(url, window.location.origin).pathname;
+      } catch {
+        return window.location.pathname;
+      }
+    })();
 
     const headers: Record<string, string> = {
       'X-Requested-With': 'XMLHttpRequest',
@@ -114,6 +121,15 @@ import { collectLocalStorage, exportLocalStorageToBackend } from '../features/lo
         if (push) {
           history.pushState(null, '', url);
         }
+
+        window.dispatchEvent(new CustomEvent('impulse:page-navigated', {
+          detail: {
+            url,
+            route,
+            loadTime,
+            responseSize,
+          }
+        }));
       })
       .catch(err => {
         if (err === 'ImpulseRedirect') return;
@@ -126,9 +142,17 @@ import { collectLocalStorage, exportLocalStorageToBackend } from '../features/lo
 
   document.addEventListener('DOMContentLoaded', () => {
     exportLocalStorageToBackend();
+    const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    const responseSize = new Blob([document.documentElement.outerHTML]).size;
+    const loadTime = navigationEntry ? Math.round(navigationEntry.duration) : 0;
 
     window.dispatchEvent(new CustomEvent('impulse:page-loaded', {
-      detail: { url: window.location.href, route: window.location.pathname }
+      detail: {
+        url: window.location.href,
+        route: window.location.pathname,
+        loadTime,
+        responseSize,
+      }
     }));
   });
 
